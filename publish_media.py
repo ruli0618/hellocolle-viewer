@@ -55,6 +55,9 @@ def upload_group(group):
         else:
             run("gh", "repo", "create", f"{OWNER}/{repo_name}", "--public", "--source", ".", "--remote", "origin", "--push", cwd=folder)
 
+    if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=folder).returncode != 0:
+        run("git", "commit", "--quiet", "-m", f"Resume interrupted {group} batch", cwd=folder)
+    run("git", "push", "origin", "main", cwd=folder)
     files = [x for x in server.ITEMS if x["group"] == group]
     tracked = set(subprocess.check_output(["git", "ls-files", "media"], cwd=folder, text=True).splitlines())
     pending = []
@@ -83,7 +86,7 @@ def upload_group(group):
             push_batch()
         if item["size"] >= LIMIT:
             run("git", "lfs", "track", rel, cwd=folder)
-        if not target.exists():
+        if not target.exists() or target.stat().st_size != item["size"]:
             shutil.copy2(item["path"], target)
         pending.append(rel)
         batch_size += item["size"]
@@ -94,14 +97,23 @@ def upload_group(group):
     if remote_files != expected:
         raise RuntimeError(f"Remote count mismatch for {group}: {len(remote_files)} / {len(expected)}")
     print(f"Completed {group}: {len(files)} files", flush=True)
+    return folder
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("groups", nargs="*", help="Group names; all by default")
+    parser.add_argument("--cleanup", action="store_true", help="Delete verified local staging folders after each group")
     args = parser.parse_args()
     snapshot.load_or_create()
     for group in args.groups or server.GROUPS:
         if group not in SLUGS:
             sys.exit(f"Unknown group: {group}")
-        upload_group(group)
+        folder = upload_group(group)
+        if args.cleanup:
+            root = WORK.resolve()
+            destination = folder.resolve()
+            if root not in destination.parents or destination == root:
+                raise RuntimeError(f"Unsafe cleanup target: {destination}")
+            shutil.rmtree(destination)
+            print(f"Cleaned staging folder: {destination}", flush=True)
