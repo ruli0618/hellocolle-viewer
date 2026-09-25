@@ -13,6 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import catalog_rules
 from imaging import crop_thumbnail
 
 ROOT = Path(r"E:\ハロコレ")
@@ -35,9 +36,11 @@ def scan():
             if not path.is_file() or path.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp", ".mp4"}:
                 continue
             rel = path.relative_to(folder)
-            event = " / ".join(rel.parts[:-1]) if len(rel.parts) > 1 else "その他"
+            raw_event = " / ".join(rel.parts[:-1]) if len(rel.parts) > 1 else "その他"
+            event = catalog_rules.event_name(raw_event)
             kind = "video" if path.suffix.lower() == ".mp4" else "photo"
-            item = {"id": len(items), "group": group, "event": event, "name": path.stem, "ext": path.suffix.lower(),
+            item = {"id": len(items), "group": group, "event": event,
+                    "name": catalog_rules.item_name(path.stem, raw_event, event), "ext": path.suffix.lower(),
                     "kind": kind, "size": path.stat().st_size, "path": str(path)}
             items.append(item)
             grouped.setdefault(event, []).append(item)
@@ -47,6 +50,7 @@ def scan():
                            "photos": sum(x["kind"] == "photo" for x in files),
                            "videos": sum(x["kind"] == "video" for x in files),
                            "cover": cover["id"]})
+    events.sort(key=lambda e: (GROUPS.index(e["group"]), catalog_rules.event_sort_key(e)))
     with LOCK:
         ITEMS[:] = items
         EVENTS[:] = events

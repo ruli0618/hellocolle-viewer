@@ -46,6 +46,19 @@ def run(*args, cwd=None, check=True):
 
 def upload_group(group):
     repo_name = "hellocolle-media-" + SLUGS[group]
+    files = [x for x in server.ITEMS if x["group"] == group]
+    expected = {f"media/{x['id']}{x['ext']}" for x in files}
+    remote = subprocess.run(
+        ["gh", "api", f"repos/{OWNER}/{repo_name}/git/trees/main?recursive=1"],
+        capture_output=True, text=True,
+    )
+    if remote.returncode == 0:
+        tree = json.loads(remote.stdout)
+        remote_files = {entry["path"] for entry in tree["tree"]
+                        if entry["path"].startswith("media/") and entry["type"] == "blob"}
+        if remote_files == expected:
+            print(f"Already complete {group}: {len(files)} files", flush=True)
+            return WORK / SLUGS[group]
     folder = WORK / SLUGS[group]
     media_dir = folder / "media"
     media_dir.mkdir(parents=True, exist_ok=True)
@@ -68,7 +81,6 @@ def upload_group(group):
     if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=folder).returncode != 0:
         run("git", "commit", "--quiet", "-m", f"Resume interrupted {group} batch", cwd=folder)
     run("git", "push", "origin", "main", cwd=folder)
-    files = [x for x in server.ITEMS if x["group"] == group]
     tracked = set(subprocess.check_output(["git", "ls-files", "media"], cwd=folder, text=True).splitlines())
     pending = []
     batch_size = 0

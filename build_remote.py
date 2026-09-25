@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import publish_media
+import catalog_rules
 import server
 import snapshot
 from imaging import crop_thumbnail
@@ -67,8 +68,23 @@ def build(thumbnails=True):
     (DOCS / ".nojekyll").touch()
     groups = [{"name": g, "count": sum(e["count"] for e in server.EVENTS if e["group"] == g),
                "events": sum(e["group"] == g for e in server.EVENTS)} for g in server.GROUPS]
-    items = [dict(server.public_item(x), url=remote_url(x)) for x in server.ITEMS]
-    catalog = {"groups": groups, "events": server.EVENTS, "total": len(items), "items": items}
+    items = []
+    for source in server.ITEMS:
+        item = dict(server.public_item(source), url=remote_url(source))
+        item["event"] = catalog_rules.event_name(source["event"])
+        item["name"] = catalog_rules.item_name(item["name"], source["event"], item["event"])
+        items.append(item)
+    merged = {}
+    for source in server.EVENTS:
+        event = dict(source, name=catalog_rules.event_name(source["name"]))
+        key = (event["group"], event["name"])
+        if key in merged:
+            for field in ("count", "photos", "videos"):
+                merged[key][field] += event[field]
+        else:
+            merged[key] = event
+    events = sorted(merged.values(), key=lambda e: (server.GROUPS.index(e["group"]), catalog_rules.event_sort_key(e)))
+    catalog = {"groups": groups, "events": events, "total": len(items), "items": items}
     (DOCS / "catalog.json").write_text(json.dumps(catalog, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"Catalog: {len(items)} files, {len(server.EVENTS)} events", flush=True)
     if thumbnails:
