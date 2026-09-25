@@ -11,6 +11,7 @@ from pathlib import Path
 
 import publish_media
 import server
+import snapshot
 from imaging import crop_thumbnail
 
 import cv2
@@ -57,7 +58,7 @@ def make_thumb(item):
 
 
 def build(thumbnails=True):
-    server.scan()
+    snapshot.load_or_create()
     DOCS.mkdir(exist_ok=True)
     THUMBS.mkdir(exist_ok=True)
     for name in ("index.html", "style.css", "app.js"):

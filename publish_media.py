@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import server
+import snapshot
 
 OWNER = "ruli0618"
 SLUGS = {
@@ -99,7 +100,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("groups", nargs="*", help="Group names; all by default")
     args = parser.parse_args()
-    server.scan()
+    snapshot.load_or_create()
     for group in args.groups or server.GROUPS:
         if group not in SLUGS:
             sys.exit(f"Unknown group: {group}")
