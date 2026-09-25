@@ -24,7 +24,8 @@ THUMBS = DOCS / "thumbs"
 def remote_url(item):
     name = f"{item['id']}{item['ext']}"
     repo = "hellocolle-media-" + publish_media.SLUGS[item["group"]]
-    return f"https://raw.githubusercontent.com/{OWNER}/{repo}/main/media/{name}"
+    host = "media.githubusercontent.com/media" if item["size"] >= publish_media.LIMIT else "raw.githubusercontent.com"
+    return f"https://{host}/{OWNER}/{repo}/main/media/{name}"
 
 
 def make_thumb(item):
