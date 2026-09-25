@@ -75,13 +75,13 @@ function showViewer(){
   $('viewerName').textContent=x.name;
   $('fullFilename').textContent=x.name+x.ext;
   $('filenameDetails').open=false;
-  $('viewerMeta').textContent=`${x.group} / ${x.event} · ${x.kind==='video'?'動画':'写真'} · ${(x.size/1024/1024).toFixed(1)} MB`;
+  $('viewerMeta').textContent=`${x.group} / ${x.event} · ${x.kind==='video'?'動画':'写真'} · ${(x.size/1024/1024).toFixed(1)} MB${x.kind==='video'&&x.rarity===5?' · 音量8%':''}`;
   const previous=$('viewerMedia').querySelector('video');if(previous){previous.pause();previous._audioContext?.close();}
   $('viewerMedia').replaceChildren();
   const el=document.createElement(x.kind==='video'?'video':'img');
   if(x.kind==='video'&&x.rarity===5&&!(isRemote()&&x.url.includes('/releases/')))el.crossOrigin='anonymous';
-  el.src=media(x.id);
   if(x.kind==='video'){
+    const source=document.createElement('source');source.src=media(x.id);source.type='video/mp4';el.append(source);
     el.controls=true;el.autoplay=true;el.playsInline=true;el.preload='metadata';
     if(x.rarity===5){
       el.volume=0.08;
@@ -91,7 +91,7 @@ function showViewer(){
       }
     }
   }
-  else el.alt=x.name;
+  else{el.src=media(x.id);el.alt=x.name;}
   $('viewerMedia').append(el);
   $('download').href=media(x.id);$('download').download=x.name+(x.ext|| (x.kind==='video'?'.mp4':'.jpg'));
   $('favorite').textContent=favorites.has(x.id)?'★':'☆';$('favorite').classList.toggle('selected',favorites.has(x.id));
