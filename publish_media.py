@@ -6,6 +6,7 @@ import json
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import server
@@ -31,7 +32,16 @@ WORK = server.BASE.parents[1] / "work" / "media-upload"
 def run(*args, cwd=None, check=True):
     visible = " ".join(str(a) for a in args)
     print("$", visible[:180] + (" …" if len(visible) > 180 else ""), flush=True)
-    return subprocess.run([str(a) for a in args], cwd=cwd, check=check, text=True)
+    retries = 4 if args[:2] == ("git", "push") else 1
+    for attempt in range(retries):
+        result = subprocess.run([str(a) for a in args], cwd=cwd, check=False, text=True)
+        if result.returncode == 0 or not check:
+            return result
+        if attempt + 1 < retries:
+            delay = 30 * (attempt + 1)
+            print(f"Push failed; retrying in {delay}s ({attempt + 2}/{retries})", flush=True)
+            time.sleep(delay)
+    raise subprocess.CalledProcessError(result.returncode, [str(a) for a in args])
 
 
 def upload_group(group):
