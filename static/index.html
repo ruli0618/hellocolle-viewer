@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#15131c">
+  <meta name="description" content="ハロコレの写真と動画をグループ・イベントから探してプレビュー">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='17' fill='%2315131c'/%3E%3Cpath d='M13 20h38v25H13z' fill='none' stroke='%23eec4d6' stroke-width='4'/%3E%3Cpath d='M21 25v15m22-15v15' stroke='%23eec4d6' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23eec4d6'/%3E%3C/svg%3E">
+  <title>ハロコレ | コレクションビューア</title>
+  <link rel="stylesheet" href="/style.css?v=2">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brandmark">✳</span><span>ハロコレ<span class="brandlight"> / COLLECTION</span></span></div>
+    <div class="topactions"><span id="totalLabel" class="total-label"></span><button id="rescan" class="iconbutton" title="ファイルを再読み込み" aria-label="ファイルを再読み込み">↻</button></div>
+  </header>
+  <main class="shell">
+    <aside class="sidebar" id="sidebar" aria-label="グループ">
+      <div class="sideheading">GROUPS <span id="groupCount"></span></div>
+      <nav id="groups" class="groups"></nav>
+    </aside>
+    <section class="content">
+      <div class="toolbar">
+        <div class="heading"><div class="eyebrow" id="eyebrow">ALL COLLECTION</div><h1 id="pageTitle">すべてのコレクション</h1><p id="pageMeta"></p></div>
+        <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="イベント・メンバー・ファイル名で検索" autocomplete="off"><kbd>/</kbd></label>
+      </div>
+      <div class="mobile-groups" id="mobileGroups" aria-label="グループを選択"></div>
+      <div class="sectiontop"><h2 id="sectionTitle">イベント</h2><button id="backButton" class="textbutton" hidden>← イベント一覧へ</button></div>
+      <div id="events" class="event-grid"></div>
+      <div id="fileControls" class="file-controls" hidden>
+        <div class="segments" role="group" aria-label="ファイル種類"><button data-kind="" class="active">すべて</button><button data-kind="photo">写真</button><button data-kind="video">動画</button><button data-kind="favorite">お気に入り</button></div>
+        <span id="fileCount"></span>
+      </div>
+      <div id="files" class="file-grid" hidden></div>
+      <div id="empty" class="empty" hidden><span>✳</span><p>見つかりませんでした</p><small>検索語や絞り込みを変えてみてください</small></div>
+      <button id="loadMore" class="load-more" hidden>さらに表示</button>
+    </section>
+  </main>
+  <dialog id="viewer" class="viewer" aria-label="ファイルプレビュー">
+    <div class="viewerbar"><div class="viewerinfo"><strong id="viewerName"></strong><span id="viewerMeta"></span></div><div class="viewerbuttons"><button id="favorite" class="viewerbutton" aria-label="お気に入りに追加">☆</button><a id="download" class="viewerbutton" download title="元ファイルを保存" aria-label="元ファイルを保存">↓</a><button id="close" class="viewerbutton" aria-label="閉じる">×</button></div></div>
+    <button id="prev" class="navarrow prev" aria-label="前へ">‹</button><div id="viewerMedia" class="viewer-media"></div><button id="next" class="navarrow next" aria-label="次へ">›</button>
+    <div class="viewerfoot"><span id="viewerPosition"></span><span>← → キーで移動 · Esc で閉じる</span></div>
+  </dialog>
+  <script src="/app.js" defer></script>
+</body>
+</html>
