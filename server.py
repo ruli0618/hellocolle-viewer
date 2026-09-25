@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import mimetypes
 import os
@@ -12,8 +13,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from imaging import crop_thumbnail
+
 ROOT = Path(r"E:\ハロコレ")
-GROUPS = ["BEYOOOOOONDS", "ロージークロニクル", "OCHA NORMA", "ANGERME", "モーニング娘", "研修生", "つばきファクトリー", "Juice=Juice", "M-LINE"]
+GROUPS = ["モーニング娘", "ANGERME", "Juice=Juice", "つばきファクトリー", "BEYOOOOOONDS", "OCHA NORMA", "ロージークロニクル", "研修生", "M-LINE"]
 BASE = Path(__file__).resolve().parent
 CACHE = BASE / "work" / "thumbnails"
 ITEMS = []
@@ -29,12 +32,12 @@ def scan():
             continue
         grouped = {}
         for path in sorted(folder.rglob("*"), key=lambda p: str(p).casefold()):
-            if not path.is_file() or path.suffix.lower() not in {".jpg", ".jpeg", ".mp4"}:
+            if not path.is_file() or path.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp", ".mp4"}:
                 continue
             rel = path.relative_to(folder)
-            event = rel.parts[0] if len(rel.parts) > 1 else "その他"
+            event = " / ".join(rel.parts[:-1]) if len(rel.parts) > 1 else "その他"
             kind = "video" if path.suffix.lower() == ".mp4" else "photo"
-            item = {"id": len(items), "group": group, "event": event, "name": path.stem,
+            item = {"id": len(items), "group": group, "event": event, "name": path.stem, "ext": path.suffix.lower(),
                     "kind": kind, "size": path.stat().st_size, "path": str(path)}
             items.append(item)
             grouped.setdefault(event, []).append(item)
@@ -50,7 +53,16 @@ def scan():
 
 
 def public_item(item):
-    return {key: item[key] for key in ("id", "group", "event", "name", "kind", "size")}
+    result = {key: item[key] for key in ("id", "group", "event", "name", "ext", "kind", "size")}
+    rarity = re.search(r"★\s*([1-5])", item["name"])
+    result["rarity"] = int(rarity.group(1)) if rarity else None
+    parts = item["name"].split("_")
+    member = parts[-1] if len(parts) > 1 else item["name"]
+    if re.fullmatch(r"[a-z0-9]{5,10}", member, re.IGNORECASE) and len(parts) > 2:
+        member = parts[-2]
+    member = re.sub(r"^☆\d+-\d+", "", member)
+    result["member"] = member
+    return result
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -152,25 +164,31 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self.send_file(path, range_support=item["kind"] == "video")
             return
-        match = re.fullmatch(r"/thumb/(\d+)", route)
+        match = re.fullmatch(r"/(thumb|cover)/(\d+)", route)
         if match:
-            idx = int(match.group(1))
+            view, idx = match.group(1), int(match.group(2))
             if idx >= len(ITEMS):
                 self.send_error(404)
                 return
             item = ITEMS[idx]
-            if item["kind"] == "photo":
-                self.send_file(Path(item["path"]))
-                return
             CACHE.mkdir(parents=True, exist_ok=True)
-            target = CACHE / f"{idx}.jpg"
+            signature = hashlib.sha256((item["path"] + str(Path(item["path"]).stat().st_mtime_ns)).encode("utf-8")).hexdigest()[:20]
+            target = CACHE / f"{signature}-{view}-v2.jpg"
             if not target.is_file():
-                try:
-                    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", "00:00:01",
-                                    "-i", item["path"], "-frames:v", "1", "-vf", "scale=480:-2",
-                                    "-q:v", "5", "-y", str(target)], stdout=subprocess.DEVNULL,
-                                   stderr=subprocess.DEVNULL, timeout=25, check=True)
-                except (OSError, subprocess.SubprocessError):
+                source = Path(item["path"])
+                if item["kind"] == "video":
+                    source = CACHE / f"{signature}-frame.jpg"
+                    if not source.exists():
+                        try:
+                            subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", "00:00:01",
+                                            "-i", item["path"], "-frames:v", "1", "-vf", "scale=700:-2",
+                                            "-q:v", "4", "-y", str(source)], stdout=subprocess.DEVNULL,
+                                           stderr=subprocess.DEVNULL, timeout=25, check=True)
+                        except (OSError, subprocess.SubprocessError):
+                            self.send_error(404)
+                            return
+                width, height = (560, 320) if view == "cover" else (360, 360)
+                if not crop_thumbnail(source, target, width, height):
                     self.send_error(404)
                     return
             self.send_file(target, "image/jpeg")
