@@ -92,6 +92,10 @@ function showViewer(){
     }
   }
   else{el.src=media(x.id);el.alt=x.name;}
+  el.addEventListener('error',()=>{
+    const message=document.createElement('p');message.className='media-error';message.textContent='原本を読み込めませんでした。少し時間をおいて開き直してください。';
+    $('viewerMedia').replaceChildren(message);
+  });
   $('viewerMedia').append(el);
   $('download').href=media(x.id);$('download').download=x.name+(x.ext|| (x.kind==='video'?'.mp4':'.jpg'));
   $('favorite').textContent=favorites.has(x.id)?'★':'☆';$('favorite').classList.toggle('selected',favorites.has(x.id));
